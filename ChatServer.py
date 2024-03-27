@@ -2,29 +2,60 @@
 
 from socket import *
 import sys
+from _thread import *
 
-if len(args) != 2:
-    print("Usage: python ChatServer.py port")
-    exit()
-
-port = int(args[1])
-
-welcomeSocket = socket(AF_INET, SOCK_STREAM)
-welcomeSocket.bind(('', port))
-welcomeSocket.listen(1)
-
-while 1:
-
-    connectionSocket, addr = welcomeSocket.accept()
-    print("Client Connected\n")
-
-    clientString = connectionSocket.recv(1024)
-    clientString = clientString.decode()
-    print("Client:",clientString)
-
-    serverString = "Received \"" + clientString + "\"\n"
+from datetime import datetime
 
 
-    connectionSocket.send(serverString.encode())
+clients = []
+def send_msg(c, str):
+    for client in clients:
+            if c != client:
+                client.send(str.encode())
+                
+def new_client(c):
+    #receive client name
+    cName = c.recv(1024)
+    cName = cName.decode()
 
-    connectionSocket.close()
+    # cID = c.recv(1024)
+    # cID = cID.decode()
+
+    # print(cID + "\n")
+
+    #current date
+    now = datetime.now()
+    now_string = now.strftime("%Y-%m-%d %H:%M:%S")
+    print(now_string + " :: " + cName + ": connected.\n") #client connected
+    while True:
+        cString = c.recv(1024)
+        cString= cString.decode()
+        now_string = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        sString = now_string + " :: " + cName + ": " + cString
+
+        send_msg(c, sString)
+    c.close()   
+def main():
+    args = sys.argv
+    if len(args) != 2:
+        print("Usage: python ChatServer.py HOSTNAME")
+        exit()
+        
+    port = int(args[1])
+
+    s = socket(AF_INET, SOCK_STREAM)
+    s.bind(('', port))
+    s.listen()
+
+    print("listening on port ", port, "...")
+
+    while True:
+        c, addr = s.accept()
+        global clients
+        clients += [c]
+        start_new_thread(new_client,(c,))
+    s.close()
+
+if __name__ == '__main__':
+    main()
