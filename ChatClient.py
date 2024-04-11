@@ -40,7 +40,9 @@ def get_msg(cString):
 
 #determines the message type from client
 def get_msg_type(cString):
-    msg_type = cString[cString.find("type\": \"") + len("type\": \""):cString.find("\", \"nickname\"")]
+    msg_type = cString[cString.find("\"type\": \"") + len("\"type\": \""):cString.find("\", \"nickname\"")]
+    if("ERROR" in msg_type.upper()):
+        msg_type = "ERROR"
     return msg_type
 
 #function to send the message from a thread, takes in socket, nickname, and client id
@@ -83,31 +85,34 @@ def main():
     if len(args) != 5:
         print("Usage: python ChatClient.py HOSTNAME PORT NICKNAME CLIENT_ID")
         exit()
+        
+    try:
+        PORT = int(args[2])
+    except:
+        print("ERR -arg 2")
+        exit()
 
     HOST = args[1] #hostname
     PORT = int(args[2]) #port num
     NICKNAME = args[3] #nickname
-    CLIENT_ID = int(args[4]) #client id
+    CLIENT_ID = args[4] #client id
     global start_time #time that the client started
     global end_time #time that the client ended
     global msg_sent #num of messages client sent (only type message)
     global msg_rcv #num of messages client received
     global char_sent #total number of characters sent
     global char_rcv #total number of characters received
-    global run
+    global run #global run variable to determine when sending and receiving should stop
 
     #try block to catch ctrl+c signal so that it can close the client and threads gracefully
     try:
         #Create the socket and connect
         c = socket(AF_INET, SOCK_STREAM)
         c.connect((HOST,PORT))
-        nowString = getTime() #current time
-        #successfully connected to server
-        print("ChatClient started with server IP:",HOST,", port:",\
-             str(PORT),", nickname:", NICKNAME, ", client ID:", str(CLIENT_ID), \
-                ", Date\Time:", nowString, "\n")
 
         nowString = getTime() #get current timestamp
+        print(f"ChatClient started with server IP: {HOST}, port: {PORT}, nickname: {NICKNAME}, client ID: {CLIENT_ID}, Date/Time: {getTime()}")
+
         start_time = nowString
         initialMsg = "type: \"nickname\", \"nickname\": \"" \
             + NICKNAME + "\", \"clientID\": \"" +\
@@ -123,11 +128,12 @@ def main():
         #checks if the nickname is already in use, if so, server 
         #sends error message and client will print it then close connection
         if(msg_type.upper() == "ERROR"):
-            print("\"type\": \"error\", ",\
-                    "\"message\": \"Nickname already in use")
+            print(sString)
             c.close()
-            exit()
-
+            sys.exit(0)
+        
+        #otherwise, the chat client has connected successfully and will continue running
+       
         send_msg_thread = threading.Thread(target=send_msg,args=(c,NICKNAME, CLIENT_ID,),daemon=True)
         send_msg_thread.start()
 

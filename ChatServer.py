@@ -6,9 +6,9 @@ import sys
 import threading
 from datetime import datetime
 
-#lists for the clients and client names 
-clients = []
-client_names = []
+clients = [] #list for the client connections
+client_names = {} #dict for the client names and ID
+
 
 ####################################################################
 
@@ -67,7 +67,7 @@ def get_msg_type(cString):
 
 ####################################################################
 
-# gets message id
+# gets client id
 
 ####################################################################
 def get_id(cString):
@@ -84,28 +84,35 @@ def new_client(c):
     cString = c.recv(1024)
     cString = cString.decode()
 
-    cName = get_name(cString) 
-    global client_names
+    cName = get_name(cString) #get the client nickname
+    cID = get_id(cString) #get the client ID
 
+    global client_names
+    
     #if the name is already existing, send an error to the client
     #and then close the connection
-    for name in client_names: 
-        if cName == name:
-            errorMsg = "\"type\": \"error\", " +\
-                    "\"message\": \"Nickname already in use"
-            c.send(errorMsg.encode())
-            c.close()
-            return
+    if cName in client_names.keys():
+        errorMsg = "\"type\": \"error\", " +\
+                "\"message\": \"Nickname already in use"
+        c.send(errorMsg.encode())
+        c.close()
+        exit()
+    if cID in client_names.values():
+        errorMsg = "\"type\": \"error\", " +\
+                "\"message\": \"ID already in use"
+        c.send(errorMsg.encode())
+        c.close()
+        exit()
 
     #send an ok to the client if name doesn't exist and
     #add it to the list of names
     c.send("ok".encode())
-    client_names += [cName]
+    client_names.update({cName:cID})
     
     #get the time and print out that the user has connected to the server
     cTime = get_time_msg(cString)
-    cID = get_id(cString) #get the client ID
-    print(cTime, " :: ",cName, ": connected.")
+
+    print(f"{cTime}::{cName}: connected.")
     run = True
     while run:
         cString = c.recv(1024)
@@ -118,7 +125,7 @@ def new_client(c):
         #if the client types in "disconnect", their connection will be closed
         #otherwise keep sending the messages
         if(cType.upper() == "DISCONNECT"):
-            print(cTime + "::" + cName + ": disconnected.")
+            print(f"{cTime}::{cName}: disconnected")
             run = False
             break
         elif(cType.upper() == "MESSAGE"):
@@ -133,7 +140,7 @@ def new_client(c):
                     , len(cMsg))
             broadcast(c, broadcast_msg)
     clients.remove(c)
-    client_names.remove(cName)
+    client_names.pop(cName)
     c.close()   
 
 ####################################################################
@@ -149,14 +156,25 @@ def main():
         if len(args) != 2:
             print("Usage: python ChatServer.py PORT")
             exit()
-        try:     
+        try:
             port = int(args[1])
-        except(ValueError):
-            print("Invalid Input, not a valid port number. Try again")
+        except:
+            print("Port invalid, not a number")
+
+        if port > 65536:
+            print("Port Number larger than 65536")
+            exit()
+        if port < 10000 or port > 11000:
+            print("Port number outside of range, must be 10000 < PORT < 11000")
             exit()
 
-        s = socket(AF_INET, SOCK_STREAM)
-        s.bind(('', port))
+        try:
+            port = int(args[1])
+            s = socket(AF_INET, SOCK_STREAM)
+            s.bind(('', port))
+        except:
+            print(f"ERR - cannot create ChatServer socket using port number {port}")
+            exit()
         s.listen()
 
         print("ChatServer started with server IP:",gethostbyname(gethostname()),", port:", str(port),"...")
@@ -171,8 +189,7 @@ def main():
         for client in clients:
             client.close()
             clients.remove(client)
-        for name in client_names:
-            client_names.remove(name)
+        client_names.clear()
         s.close()
         exit()
 
