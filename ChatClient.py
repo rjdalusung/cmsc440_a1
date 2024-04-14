@@ -12,40 +12,69 @@ msg_sent = 0 #num of messages client sent (only type message)
 msg_rcv = 0 #num of messages client received
 char_sent = 0 #total number of characters sent
 char_rcv = 0 #total number of characters received
-run = True #variable to determine when to stop the thread and close the client socke
+run = True #variable to determine when to stop the thread and close the client socket
 
-#get the current time function
+####################################################################
+# getTime()
+
+# gets the current time
+
+####################################################################
 def getTime():
     now = datetime.now()
     return(now.strftime("%Y-%m-%d %H:%M:%S"))
 
-#get the time from the message
+####################################################################
+# get_time_msg()
+
+# gets the time from the message
+
+####################################################################
 def get_time_msg(cString):
     cTime = cString[cString.find("timestamp\": \"") + \
         len("timestamp\": \""):len(cString)-1]
     return cTime
 
-#finds the name in the message
+####################################################################
+# get_name()
+
+# gets the nickname from the message
+
+####################################################################
 def get_name(cString):
     cName = cString[cString.find("\"nickname\": \"") + \
         len("\"nickname\": \""):\
             cString.find("\", \"message\": \"")]  
     return cName   
+####################################################################
+# get_msg()
 
-#finds the message in the client message 
+# gets the message from the server
+
+####################################################################
 def get_msg(cString):
     cMsg = cString[cString.find(", \"message\": \"") + len(", \"message\": \""):\
         cString.find("\", \"timestamp\": ")]
     return cMsg
 
-#determines the message type from client
+####################################################################
+# get_msg_type()
+
+# gets message type
+
+####################################################################
 def get_msg_type(cString):
     msg_type = cString[cString.find("\"type\": \"") + len("\"type\": \""):cString.find("\", \"nickname\"")]
     if("ERROR" in msg_type.upper()):
         msg_type = "ERROR"
     return msg_type
 
-#function to send the message from a thread, takes in socket, nickname, and client id
+####################################################################
+# send_msg()
+
+# function for the thread, sends the messages contiously until disconnect
+
+####################################################################
 def send_msg(c,NICKNAME, CLIENT_ID):
     global end_time
     global msg_sent
@@ -79,14 +108,19 @@ def send_msg(c,NICKNAME, CLIENT_ID):
         c.send(clientString.encode())    
         userInput = input("\n")
     
+####################################################################
 
+# main
+
+####################################################################
 def main():
-    args = sys.argv
-    if len(args) != 5:
+    args = sys.argv #get the arguments from command line
+    
+    if len(args) != 5: #check if all arguments are there
         print("Usage: python ChatClient.py HOSTNAME PORT NICKNAME CLIENT_ID")
         exit()
         
-    try:
+    try: #if the port can't be resolved to an int, call error
         PORT = int(args[2])
     except:
         print("ERR -arg 2")
@@ -113,13 +147,15 @@ def main():
         nowString = getTime() #get current timestamp
         print(f"ChatClient started with server IP: {HOST}, port: {PORT}, nickname: {NICKNAME}, client ID: {CLIENT_ID}, Date/Time: {getTime()}")
 
-        start_time = nowString
+        start_time = nowString #starting time
+
+        #the iniial 'nickname message' 
         initialMsg = "type: \"nickname\", \"nickname\": \"" \
             + NICKNAME + "\", \"clientID\": \"" +\
                 str(CLIENT_ID) + "\",\"timestamp\": \"" +\
                     nowString + "\""
-        # print(initialMsg)
-        c.send(initialMsg.encode())
+
+        c.send(initialMsg.encode()) #send the nickname message, receive a reply
         sString = c.recv(1024)
         sString = sString.decode()
 
@@ -127,16 +163,21 @@ def main():
 
         #checks if the nickname is already in use, if so, server 
         #sends error message and client will print it then close connection
+        #this makes the user try again
         if(msg_type.upper() == "ERROR"):
             print(sString)
             c.close()
             sys.exit(0)
         
         #otherwise, the chat client has connected successfully and will continue running
-       
-        send_msg_thread = threading.Thread(target=send_msg,args=(c,NICKNAME, CLIENT_ID,),daemon=True)
+        #multithreading, where this thread will send the message
+        #once the user types disconnect, it will set run to false and the while loop below won't execute after the
+        #thread returns
+        send_msg_thread = threading.Thread(target=send_msg,args=(c,NICKNAME, CLIENT_ID,),daemon=True) #daemon threads close by themselves upon program termination
+
         send_msg_thread.start()
 
+        #continuosly send messages and receive them
         while run:
             sString = c.recv(1024)
             sString = sString.decode()
@@ -150,6 +191,7 @@ def main():
                 char_rcv += len(sMsg)
                 print(sString)
 
+        #wait for the thread to come back to here 
         send_msg_thread.join()
         print(f"\nSummary: start: {start_time}, end: {end_time}, msg sent: {msg_sent}, msg rcv:{msg_rcv}, char sent: {char_sent}, char rcv: {char_rcv}")
         c.close()

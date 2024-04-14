@@ -11,6 +11,7 @@ client_names = {} #dict for the client names and ID
 
 
 ####################################################################
+# broadcast()
 
 # broadcasts the message to all clients except the sender
 
@@ -26,6 +27,7 @@ def broadcast(c, str):
     print(broadcast_names)
 
 ####################################################################
+# get_time_msg()
 
 # gets the time from the message
 
@@ -36,6 +38,7 @@ def get_time_msg(cString):
     return cTime
 
 ####################################################################
+# get_name()
 
 # gets the nickname from the message
 
@@ -47,6 +50,7 @@ def get_name(cString):
     return cName     
 
 ####################################################################
+# get_msg()
 
 # gets the message from the client
 
@@ -57,6 +61,7 @@ def get_msg(cString):
     return cMsg
 
 ####################################################################
+# get_msg_type()
 
 # gets message type
 
@@ -66,7 +71,7 @@ def get_msg_type(cString):
     return msg_type
 
 ####################################################################
-
+# get_id()
 # gets client id
 
 ####################################################################
@@ -76,6 +81,7 @@ def get_id(cString):
     return cID
 
 ####################################################################
+# new_client()
 
 # initializes new clients
 
@@ -112,7 +118,11 @@ def new_client(c):
     #get the time and print out that the user has connected to the server
     cTime = get_time_msg(cString)
 
-    print(f"{cTime}::{cName}: connected.")
+    print(f"{cTime}::{cName}: connected.") #user has connected
+
+    #while run is true, the server will keep receiving messages from clients
+    #and broadcasting them, until disconnect where that client will be closed and their
+    #name will be removed from the list
     run = True
     while run:
         cString = c.recv(1024)
@@ -151,12 +161,15 @@ def new_client(c):
 def main():
     global clients #list of clients
 
+    #try block for catching ctrl+c signal
     try:
         args = sys.argv
-        if len(args) != 2:
+        if len(args) != 2: #check if correct amount of arguments in command line
             print("Usage: python ChatServer.py PORT")
             exit()
-        try:
+        
+        #testing to se if the port is available or within range
+        try: 
             port = int(args[1])
         except:
             print("Port invalid, not a number")
@@ -167,7 +180,6 @@ def main():
         if port < 10000 or port > 11000:
             print("Port number outside of range, must be 10000 < PORT < 11000")
             exit()
-
         try:
             port = int(args[1])
             s = socket(AF_INET, SOCK_STREAM)
@@ -177,8 +189,11 @@ def main():
             exit()
         s.listen()
 
-        print("ChatServer started with server IP:",gethostbyname(gethostname()),", port:", str(port),"...")
+        print("ChatServer started with server IP:",gethostbyname(gethostname()),", port:", str(port),"...") #successfully connected to port
 
+        #just keep accepting new connections and making new threads for them until ctrl+c
+        #new threads are daemon threads which close by themself upon program termination
+        #also add clients to the dict to keep track of them
         while True:
             c, addr = s.accept()
             clients += [c]
