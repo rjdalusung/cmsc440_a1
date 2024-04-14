@@ -142,7 +142,11 @@ def main():
     try:
         #Create the socket and connect
         c = socket(AF_INET, SOCK_STREAM)
-        c.connect((HOST,PORT))
+        try:
+            c.connect((HOST,PORT))
+        except:
+            print("Connection error, try  different host or port")
+            sys.exit(0)
 
         nowString = getTime() #get current timestamp
         print(f"ChatClient started with server IP: {HOST}, port: {PORT}, nickname: {NICKNAME}, client ID: {CLIENT_ID}, Date/Time: {getTime()}")
